@@ -1,5 +1,6 @@
 # config.py
 # Copyright (c) Ben Millwood 2009
+# Copyright (c) Darren Salt 2012
 # This file is part of the Tremulous Master server.
 '''Configuration for the Tremulous Master
 
@@ -22,6 +23,10 @@ GSR_MAXSERVERS:
 FEATURED_FILE, IGNORE_FILE, MOTD_FILE:
         These are mostly for internal use, but contain the file names from
         which the featured servers, address blacklist, and motd are read.
+game_name:
+        Contains the game name.
+game_id:
+        Contains the game identifier string used by clients.
 ipv4, ipv6:
         These variables specify which interfaces the client will use: at least
         one will be true, or ConfigError will be raised.
@@ -34,7 +39,7 @@ listen_addr, listen6_addr, port, challengeport:
         they are not configured to do so for client requests. The separate port
         defeats this connection tracking and we only get a response if ports
         are set up correctly.
-        inPort defaults to 30710; outPort defaults to inPort + 1
+        inPort defaults according to game; outPort defaults to inPort + 1
 max_servers:
         This defaults to unlimited but if someone finds a way to flood the
         server list it could serve as a measure to prevent excessive RAM usage.
@@ -70,16 +75,24 @@ from utils import inet_pton, valid_addr, stringtosockaddr
 # Optional imports
 # I named these variables in line with the standard library's has_ipv6.
 # Surely that should be have_ipv6?
-has_chroot, has_setuid = True, True
+has_chroot, has_setuid, has_setgid, has_setgroups = True, True, True, True
 try:
-    from os import chroot
+    from os import chdir, chroot
 except ImportError:
     has_chroot = False
 try:
+    from pwd import getpwnam, getpwuid, getpwall
     from os import setuid, getuid
-    from pwd import getpwnam
 except ImportError:
     has_setuid = False
+try:
+    from os import setgid, getgid
+except ImportError:
+    has_setgid = False
+try:
+    from os import setgroups, getgroups
+except ImportError:
+    has_setgroups = False
 
 # I don't have a non-IPv6 computer, so I'm not sure how this works
 try:
@@ -125,7 +138,7 @@ class MasterConfig(object):
     # docstring TODO
     def constants(self):
         '''Sets instance variables that do not change at run-time'''
-        self.VERSION = 'Tremulous Master Server v0.1'
+        self.VERSION = 'Master Server v0.1'
 
         # A getinfo request with a challenge longer than 128 chars will be
         # ignored. In practice this is far more than is necessary anyway.
@@ -189,6 +202,10 @@ class MasterConfig(object):
                           '<none|tdb|sqlite|auto>',
                           metavar = 'NAME', default = 'auto',
                           choices = ['none', 'tdb', 'sqlite', 'auto'])
+        parser.add_option('-g', '--game',
+                          help = 'Game for which to be a master server',
+                          metavar = 'GAME', default = 'unvanquished',
+                          choices = ['trem', 'tremulous', 'unv', 'unvanquished'])
         if has_chroot:
             parser.add_option('-j', '--jail',
                               help = 'Path to chroot into at startup',
@@ -205,7 +222,7 @@ class MasterConfig(object):
         parser.add_option('-n', '--max-servers', type = 'int',
                           help = 'Maximum number of servers to track',
                           metavar = 'NUM')
-        parser.add_option('-p', '--port', type = 'int', default = 30710,
+        parser.add_option('-p', '--port', type = 'int', default = -1,
                           help = 'Port for incoming requests',
                           metavar = 'NUM')
         parser.add_option('-P', '--challengeport', type = 'int',
@@ -238,6 +255,17 @@ class MasterConfig(object):
         parser.destroy()
         del parser
 
+        if self.game == 'trem' or self.game == 'tremulous':
+            self.game_name = 'Tremulous'
+            self.game_id = 'Tremulous'
+            defaultPort = 30710
+        else:
+            self.game_name = 'Unvanquished'
+            self.game_id = 'UNVANQUISHED'
+            defaultPort = 27950
+
+        self.VERSION = self.game_name + ' ' + self.VERSION
+
         if self.version:
             stdout.write('{0}\n'.format(self.VERSION))
             exit(0)
@@ -254,28 +282,55 @@ class MasterConfig(object):
         if not self.ipv4 and not self.ipv6:
             raise ConfigError('Cannot specify both --ipv4 and --ipv6')
 
+        if self.user is not None:
+            try:
+                pwnam = getpwnam(self.user)
+                uid = pwnam.pw_uid
+            except KeyError:
+                try:
+                    uid = int(self.user)
+                    pwnam = getpwuid(uid)
+                except ValueError:
+                    raise ConfigError(self.user, 'no such user', sep = ': ')
+
+            if has_setgid:
+                gid = pwnam.pw_gid
+
         if self.jail is not None:
             try:
-                chroot(self.jail)
+                chdir(self.jail)
+                chroot('.')
             except OSError as err:
                 raise ConfigError('chroot {0}:'.format(self.jail),
                                   err.strerror)
             self.log(LOG_VERBOSE, 'Chrooted to', self.jail)
-        if self.user is not None:
-            try:
-                uid = getpwnam(self.user).pw_uid
-            except KeyError:
-                try:
-                    uid = int(self.user)
-                except ValueError:
-                    raise ConfigError(self.user, 'no such user', sep = ': ')
 
+        if self.user is not None:
+            # okay, probably root at this point
+            if has_setgroups:
+                try:
+                    setgroups(())
+                except OSError as err:
+                    raise ConfigError('setgroups:', err.strerror)
+
+            if has_setgid:
+                try:
+                    setgid(gid)
+                except OSError as err:
+                    raise ConfigError('setgid {0}:'.format(gid), err.strerror)
+
+            # setuid last, so setgroups & setgid don't fail
             try:
                 setuid(uid)
             except OSError as err:
                 raise ConfigError('setuid {0}:'.format(uid), err.strerror)
 
+            pwnam = None
+
             self.log(LOG_VERBOSE, 'UID set to', getuid())
+
+        if self.port == -1:
+            self.port = defaultPort
 
         if self.challengeport is None:
             if self.port == 0xffff:
