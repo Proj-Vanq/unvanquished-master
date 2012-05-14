@@ -351,7 +351,7 @@ def getservers(sock, addr, data):
             game = ''
         if game != config.game_id:
             log(LOG_VERBOSE, '<< {0}: ext but not {1}, '
-                             'ignored'.format(addr), game, config.game_id)
+                             'ignored'.format(addr), config.game_id)
             return
     try:
         protocol = tokens.pop(0)
