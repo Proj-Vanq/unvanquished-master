@@ -23,6 +23,10 @@ GSR_MAXSERVERS:
 FEATURED_FILE, IGNORE_FILE, MOTD_FILE:
         These are mostly for internal use, but contain the file names from
         which the featured servers, address blacklist, and motd are read.
+game_name:
+        Contains the game name.
+game_id:
+        Contains the game identifier string used by clients.
 ipv4, ipv6:
         These variables specify which interfaces the client will use: at least
         one will be true, or ConfigError will be raised.
@@ -35,7 +39,7 @@ listen_addr, listen6_addr, port, challengeport:
         they are not configured to do so for client requests. The separate port
         defeats this connection tracking and we only get a response if ports
         are set up correctly.
-        inPort defaults to 30710; outPort defaults to inPort + 1
+        inPort defaults according to game; outPort defaults to inPort + 1
 max_servers:
         This defaults to unlimited but if someone finds a way to flood the
         server list it could serve as a measure to prevent excessive RAM usage.
@@ -134,7 +138,7 @@ class MasterConfig(object):
     # docstring TODO
     def constants(self):
         '''Sets instance variables that do not change at run-time'''
-        self.VERSION = 'Tremulous Master Server v0.1'
+        self.VERSION = 'Master Server v0.1'
 
         # A getinfo request with a challenge longer than 128 chars will be
         # ignored. In practice this is far more than is necessary anyway.
@@ -198,6 +202,10 @@ class MasterConfig(object):
                           '<none|tdb|sqlite|auto>',
                           metavar = 'NAME', default = 'auto',
                           choices = ['none', 'tdb', 'sqlite', 'auto'])
+        parser.add_option('-g', '--game',
+                          help = 'Game for which to be a master server',
+                          metavar = 'GAME', default = 'tremulous',
+                          choices = ['trem', 'tremulous', 'unv', 'unvanquished'])
         if has_chroot:
             parser.add_option('-j', '--jail',
                               help = 'Path to chroot into at startup',
@@ -214,7 +222,7 @@ class MasterConfig(object):
         parser.add_option('-n', '--max-servers', type = 'int',
                           help = 'Maximum number of servers to track',
                           metavar = 'NUM')
-        parser.add_option('-p', '--port', type = 'int', default = 30710,
+        parser.add_option('-p', '--port', type = 'int', default = -1,
                           help = 'Port for incoming requests',
                           metavar = 'NUM')
         parser.add_option('-P', '--challengeport', type = 'int',
@@ -246,6 +254,17 @@ class MasterConfig(object):
         # don't need this anymore
         parser.destroy()
         del parser
+
+        if self.game == 'trem' or self.game == 'tremulous':
+            self.game_name = 'Tremulous'
+            self.game_id = 'Tremulous'
+            defaultPort = 30710
+        else:
+            self.game_name = 'Unvanquished'
+            self.game_id = 'UNVANQUISHED'
+            defaultPort = 27950
+
+        self.VERSION = self.game_name + ' ' + self.VERSION
 
         if self.version:
             stdout.write('{0}\n'.format(self.VERSION))
@@ -309,6 +328,9 @@ class MasterConfig(object):
             pwnam = None
 
             self.log(LOG_VERBOSE, 'UID set to', getuid())
+
+        if self.port == -1:
+            self.port = defaultPort
 
         if self.challengeport is None:
             if self.port == 0xffff:

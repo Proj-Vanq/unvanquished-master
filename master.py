@@ -349,9 +349,9 @@ def getservers(sock, addr, data):
             game = tokens.pop(0)
         except IndexError:
             game = ''
-        if game != 'Tremulous':
-            log(LOG_VERBOSE, '<< {0}: ext but not Tremulous, '
-                             'ignored'.format(addr))
+        if game != config.game_id:
+            log(LOG_VERBOSE, '<< {0}: ext but not {1}, '
+                             'ignored'.format(addr), game, config.game_id)
             return
     try:
         protocol = tokens.pop(0)
@@ -489,6 +489,8 @@ def serialise():
     with open('serverlist.txt', 'w') as f:
         f.write('\n'.join(str(s) for sl in servers.values() for s in sl))
         log(LOG_PRINT, 'Wrote serverlist.txt')
+
+log(LOG_PRINT, 'Master server for', config.game_name)
 
 try:
     if config.ipv4 and config.listen_addr:
