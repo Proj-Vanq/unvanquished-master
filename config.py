@@ -366,7 +366,7 @@ class MasterConfig(object):
         # FIXME: validate the value as an info parameter (no \\ etc.)
         try:
             with open(self.MOTD_FILE) as motd:
-                return motd.read().rstrip('\n')
+                return motd.read().replace('\n','|')
         except IOError as err:
             if err.errno != ENOENT:
                 raise

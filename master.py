@@ -349,10 +349,6 @@ def getservers(sock, addr, data):
             game = tokens.pop(0)
         except IndexError:
             game = ''
-        if game != 'Tremulous':
-            log(LOG_VERBOSE, '<< {0}: ext but not Tremulous, '
-                             'ignored'.format(addr))
-            return
     try:
         protocol = tokens.pop(0)
     except IndexError:
