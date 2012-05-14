@@ -204,7 +204,7 @@ class MasterConfig(object):
                           choices = ['none', 'tdb', 'sqlite', 'auto'])
         parser.add_option('-g', '--game',
                           help = 'Game for which to be a master server',
-                          metavar = 'GAME', default = 'tremulous',
+                          metavar = 'GAME', default = 'unvanquished',
                           choices = ['trem', 'tremulous', 'unv', 'unvanquished'])
         if has_chroot:
             parser.add_option('-j', '--jail',
