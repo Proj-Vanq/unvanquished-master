@@ -53,8 +53,6 @@ from db import dbconnect
 # inet_pton isn't defined on windows, so use our own
 from utils import inet_pton, stringtosockaddr, valid_addr
 
-optional_infostring_defaults = 'bots\\0\\'
-
 try:
     config.parse()
 except ConfigError as err:
@@ -206,7 +204,9 @@ class Server(object):
         if not infostring:
             log(LOG_VERBOSE, addrstr, 'no infostring found')
             return False
-        info = Info(optional_infostring_defaults + infostring)
+        info = Info(infostring)
+        if 'bots' not in info:
+            info['bots'] = '0'
         try:
             name = info['hostname']
             if info['challenge'] != self.challenge:
@@ -215,9 +215,12 @@ class Server(object):
                 return False
             self.protocol = info['protocol']
             self.empty = (info['clients'] == '0' and info['bots'] == '0')
-            self.full = (info['clients'] + info['bots'] == info['sv_maxclients'])
+            self.full = (int(info['clients']) + int(info['bots']) == info['sv_maxclients'])
         except KeyError as ex:
             log(LOG_VERBOSE, addrstr, 'info key missing:', ex)
+            return False
+        except ValueError as ex:
+            log(LOG_VERBOSE, addrstr, 'bad value for key:', ex)
             return False
         if self.lastactive:
             log(LOG_VERBOSE, addrstr, 'verified')
