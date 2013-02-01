@@ -1,0 +1,6 @@
+*~
+*.pyc
+serverlist.txt
+featured.txt
+ignore.txt
+stats.db
