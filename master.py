@@ -215,7 +215,7 @@ class Server(object):
                 return False
             self.protocol = info['protocol']
             self.empty = (info['clients'] == '0' and info['bots'] == '0')
-            self.full = (int(info['clients']) + int(info['bots']) == info['sv_maxclients'])
+            self.full = (int(info['clients']) + int(info['bots']) == int(info['sv_maxclients']))
         except KeyError as ex:
             log(LOG_VERBOSE, addrstr, 'info key missing:', ex)
             return False
