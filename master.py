@@ -349,7 +349,7 @@ def getservers(sock, addr, data):
             game = tokens.pop(0)
         except IndexError:
             game = ''
-        if game != config.game_id:
+        if game.rstrip() != config.game_id:
             log(LOG_VERBOSE, '<< {0}: ext but not {1}, '
                              'ignored'.format(addr), config.game_id)
             return
