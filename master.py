@@ -1,4 +1,4 @@
-l#!/usr/bin/env python
+#!/usr/bin/env python
 ###############################################################################
 # master.py - a master server for Tremulous
 # Copyright (c) 2009-2011 Ben Millwood
