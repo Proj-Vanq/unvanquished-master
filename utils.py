@@ -51,6 +51,9 @@ def valid_addr(addr, afs = (AF_INET, AF_INET6)):
 def parse_addrwport(addr):
     # docstring TODO
     sep = addr.rindex(':')
+    # need to strip enclosing [] from the address
+    if addr[0] == '[' and addr[sep - 1] == ']':
+        return (addr[1:sep - 1], int(addr[sep + 1:]))
     return (addr[:sep], int(addr[sep + 1:]))
 
 def stringtosockaddr(str, family = None, socktype = SOCK_DGRAM):
