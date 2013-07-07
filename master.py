@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+l#!/usr/bin/env python
 ###############################################################################
 # master.py - a master server for Tremulous
 # Copyright (c) 2009-2011 Ben Millwood
@@ -32,7 +32,7 @@ Accepted incoming messages:
         before accepting it into the server list.
     'getservers <protocol> [empty] [full]'
         A request from the client to send the list of servers.
-    'getserversExt <game name> <protocol> [ipv4|ipv6] [empty] [full]'
+    'getserversExt <game> <protocol> [ipv4|ipv6] [empty] [full]'
         A request from the client to send the list of servers.
 """ # docstring TODO
 
