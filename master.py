@@ -156,12 +156,24 @@ class Info(dict):
 
 class Server(object):
     '''Data structure for tracking server timeouts and challenges'''
+    allServers = dict();
+
     def __init__(self, addr):
         # docstring TODO
         self.addr = addr
         self.sock = outSocks[addr.family]
         self.lastactive = 0
         self.timeout = 0
+        self.linkAddr = None
+        self.allServers[addr] = None # force garbage collection
+        self.allServers[addr] = self # self-reference
+
+    def __del__(self):
+        if self.linkAddr in self.allServers:
+            # server address link? break it
+            assert self.allServers[self.linkAddr].linkAddr in (None, self.addr), 'broken server address link detected'
+            self.allServers[self.linkAddr].linkAddr = None;
+        del self.allServers[self.addr]
 
     def __nonzero__(self):
         '''Server has replied to a challenge'''
@@ -224,6 +236,33 @@ class Server(object):
         except ValueError as ex:
             log(LOG_VERBOSE, addrstr, 'bad value for key:', ex)
             return False
+
+        # second challenge?
+        try:
+            challenge2 = info['challenge2']
+            log(LOG_VERBOSE, addrstr, 'received challenge2')
+
+            for other in self.allServers:
+                if self.allServers[other] is not self and hasattr(self.allServers[other], 'challenge') and self.allServers[other].challenge == challenge2:
+                    # check for existing linkages
+                    # if pointing at other servers, reject
+                    assert self.linkAddr == None or self.linkAddr == other, '{0} is already linked to another address'.format(self)
+                    assert self.allServers[other].linkAddr == None or self.allServers[other].linkAddr == self.addr, '{0} is already linked to another address'.format(other)
+
+                    # make the link
+                    log(LOG_VERBOSE, addrstr, 'linked to {0}'.format(self.allServers[self.allServers[other].addr]))
+                    self.linkAddr = other
+                    self.allServers[other].linkAddr = self.addr
+            else:
+                pass
+        except KeyError as ex:
+            pass
+        except ValueError as ex:
+            pass
+        except AssertionError as ex:
+            log(LOG_VERBOSE, addrstr, 'martian link challenge: {0}'.format(ex))
+            return False
+
         if self.lastactive:
             log(LOG_VERBOSE, addrstr, 'verified')
         else:
