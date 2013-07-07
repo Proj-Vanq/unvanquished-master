@@ -32,6 +32,8 @@ Accepted incoming messages:
         before accepting it into the server list.
     'getservers <protocol> [empty] [full]'
         A request from the client to send the list of servers.
+    'getserversExt <game name> <protocol> [ipv4|ipv6] [empty] [full]'
+        A request from the client to send the list of servers.
 """ # docstring TODO
 
 # Required imports
