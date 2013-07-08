@@ -32,8 +32,9 @@ Accepted incoming messages:
         before accepting it into the server list.
     'getservers <protocol> [empty] [full]'
         A request from the client to send the list of servers.
-    'getserversExt <game> <protocol> [ipv4|ipv6] [empty] [full]'
+    'getserversExt <game> <protocol> [ipv4|ipv6|dual] [empty] [full]'
         A request from the client to send the list of servers.
+        'dual' requests that info about which are dual-stack is also returned.
 """ # docstring TODO
 
 # Required imports
@@ -409,23 +410,34 @@ def getservers(sock, addr, data):
         family = (AF_INET  if 'ipv4' in tokens
              else AF_INET6 if 'ipv6' in tokens
              else AF_UNSPEC)
+        dual = 'dual' in tokens
     else:
         family = AF_INET
+        dual = False
 
     max = config.GSR_MAXSERVERS
     packets = {None: list()}
+    linkedRef = dict()
     for label in servers.keys():
         # dict of lists of lists
         if ext:
             packets[label] = list()
             filtered = filterservers(servers[label].values(),
                                      family, protocol, empty, full)
+            for server in filtered:
+                if server.linkAddr:
+                    linkedRef[server.addr] = server.linkAddr;
+                    linkedRef[server.linkAddr] = server.addr;
             while len(filtered) > 0:
                 packets[label].append(filtered[:config.GSR_MAXSERVERS])
                 filtered = filtered[config.GSR_MAXSERVERS:]
         else:
             filtered = filterservers(servers[label].values(),
                                      family, protocol, empty, full)
+            for server in filtered:
+                if server.linkAddr:
+                    linkedRef[server.addr] = server.linkAddr;
+                    linkedRef[server.linkAddr] = server.addr;
             if not packets[None]:
                 packets[None].append(filtered[:config.GSR_MAXSERVERS])
                 filtered = filtered[config.GSR_MAXSERVERS:]
@@ -437,6 +449,14 @@ def getservers(sock, addr, data):
                 else:
                     packets[None].append(filtered[:config.GSR_MAXSERVERS])
                     filtered = filtered[config.GSR_MAXSERVERS:]
+
+    if dual:
+        message = ''
+        for link in linkedRef:
+            if link.family == AF_INET:
+                message += gsr_formataddr(link)[1:] + gsr_formataddr(linkedRef[link])[1:] # strip leading \ and /
+        safe_send(sock, '\xff\xff\xff\xffgetserversExtResponseLinks\0' + message, addr)
+        log(LOG_VERBOSE, '>> {0}: getserversExtResponseLinks: sent 1 packet'.format(addr))
 
     start = '\xff\xff\xff\xffgetservers{0}Response'.format(
                                       'Ext' if ext else '')
