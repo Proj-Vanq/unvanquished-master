@@ -152,6 +152,8 @@ class MasterConfig(object):
         # This limit should be hit long before the overall length limit of
         # 16384 bytes
         self.GSR_MAXSERVERS = 256
+        # Number of bytes to read from incoming packets
+        self.READ_SIZE = 2048
 
         self.IGNORE_FILE = 'ignore.txt'
         self.FEATURED_FILE = 'featured.txt'

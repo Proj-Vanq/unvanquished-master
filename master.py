@@ -415,7 +415,6 @@ def getservers(sock, addr, data):
         family = AF_INET
         dual = False
 
-    max = config.GSR_MAXSERVERS
     packets = {None: list()}
     linkedRef = dict()
     for label in servers.keys():
@@ -602,8 +601,7 @@ def mainloop():
     prune_timeouts()
     for sock in inSocks.values():
         if sock in ready:
-            # FIXME: 2048 magic number
-            (data, addr) = sock.recvfrom(2048)
+            (data, addr) = sock.recvfrom(config.READ_SIZE)
             saddr = Addr(addr, sock.family)
             # for logging
             addrstr = '<< {0}:'.format(saddr)
@@ -633,7 +631,7 @@ def mainloop():
                 log(LOG_VERBOSE, addrstr, 'unrecognised content:', repr(data))
     for sock in outSocks.values():
         if sock in ready:
-            (data, addr) = sock.recvfrom(2048)
+            (data, addr) = sock.recvfrom(config.READ_SIZE)
             saddr = Addr(addr, sock.family)
             # for logging
             addrstr = '<< {0}:'.format(saddr)
