@@ -376,7 +376,7 @@ def filterservers(slist, af, protocol, empty, full):
     return [s for s in slist if s
             and af in (AF_UNSPEC, s.addr.family)
             and not s.timed_out()
-            and s.protocol == protocol
+            and (protocol == "0" or s.protocol == protocol)
             and (empty or not s.empty)
             and (full  or not s.full)]
 
