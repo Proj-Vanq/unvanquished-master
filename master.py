@@ -35,7 +35,7 @@ Accepted incoming messages:
     'getserversExt <game> <protocol> [ipv4|ipv6|dual] [empty] [full]'
         A request from the client to send the list of servers.
         'dual' requests that info about which are dual-stack is also returned.
-""" # docstring TODO
+"""
 
 # Required imports
 from errno import EINTR, ENOENT
@@ -555,39 +555,6 @@ def serialise():
         f.write('\n'.join(str(s) for sl in servers.values() for s in sl))
         log(LOG_PRINT, 'Wrote serverlist.txt')
 
-log(LOG_PRINT, 'Master server for', config.game_name)
-
-try:
-    if config.ipv4 and config.listen_addr:
-        log(LOG_PRINT, 'IPv4: Listening on', config.listen_addr,
-                       'ports', config.port, 'and', config.challengeport)
-        inSocks[AF_INET] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        inSocks[AF_INET].bind((config.listen_addr, config.port))
-        outSocks[AF_INET] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        outSocks[AF_INET].bind((config.listen_addr, config.challengeport))
-
-    if config.ipv6 and config.listen6_addr:
-        log(LOG_PRINT, 'IPv6: Listening on', config.listen6_addr,
-                       'ports', config.port, 'and', config.challengeport)
-        inSocks[AF_INET6] = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-        inSocks[AF_INET6].bind((config.listen6_addr, config.port))
-        outSocks[AF_INET6] = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-        outSocks[AF_INET6].bind((config.listen6_addr, config.challengeport))
-
-    if not inSocks and not outSocks:
-        log(LOG_ERROR, 'Error: Not listening on any sockets, aborting')
-        exit(1)
-
-except sockerr as err:
-    log(LOG_ERROR, 'Couldn\'t initialise sockets:', err.strerror)
-    exit(1)
-
-try:
-    deserialise()
-except IOError as err:
-    if err.errno != ENOENT:
-        log(LOG_ERROR, 'Error reading serverlist.txt:', err.strerror)
-
 def mainloop():
     try:
         ret = select(chain(inSocks.values(), outSocks.values()), [], [])
@@ -653,15 +620,50 @@ def mainloop():
             # this has got to be an infoResponse, right?
             servers[label][addr].infoResponse(data)
 
-try:
-    while True:
-        mainloop()
-except KeyboardInterrupt:
-    stderr.write('Interrupted')
-    signal(SIGINT, SIG_DFL)
-    # The following kill stops the finally from running,
-    # so let's do the serialise ourselves.
-    serialise()
-    kill(getpid(), SIGINT)
-finally:
-    serialise()
+
+if __name__ == "__main__":
+    log(LOG_PRINT, 'Master server for', config.game_name)
+
+    try:
+        if config.ipv4 and config.listen_addr:
+            log(LOG_PRINT, 'IPv4: Listening on', config.listen_addr,
+                        'ports', config.port, 'and', config.challengeport)
+            inSocks[AF_INET] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+            inSocks[AF_INET].bind((config.listen_addr, config.port))
+            outSocks[AF_INET] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+            outSocks[AF_INET].bind((config.listen_addr, config.challengeport))
+
+        if config.ipv6 and config.listen6_addr:
+            log(LOG_PRINT, 'IPv6: Listening on', config.listen6_addr,
+                        'ports', config.port, 'and', config.challengeport)
+            inSocks[AF_INET6] = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
+            inSocks[AF_INET6].bind((config.listen6_addr, config.port))
+            outSocks[AF_INET6] = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
+            outSocks[AF_INET6].bind((config.listen6_addr, config.challengeport))
+
+        if not inSocks and not outSocks:
+            log(LOG_ERROR, 'Error: Not listening on any sockets, aborting')
+            exit(1)
+
+    except sockerr as err:
+        log(LOG_ERROR, 'Couldn\'t initialise sockets:', err.strerror)
+        exit(1)
+
+    try:
+        deserialise()
+    except IOError as err:
+        if err.errno != ENOENT:
+            log(LOG_ERROR, 'Error reading serverlist.txt:', err.strerror)
+
+    try:
+        while True:
+            mainloop()
+    except KeyboardInterrupt:
+        stderr.write('Interrupted')
+        signal(SIGINT, SIG_DFL)
+        # The following kill stops the finally from running,
+        # so let's do the serialise ourselves.
+        serialise()
+        kill(getpid(), SIGINT)
+    finally:
+        serialise()
