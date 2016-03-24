@@ -26,7 +26,7 @@ Requires Python 2.6
 Protocol for this is pretty simple.
 Accepted incoming messages:
     'heartbeat <game>\\n'
-        <game> is ignored for the time being (it's always Tremulous in any
+        <game> is ignored for the time being (it's always Unvanquished in any
         case). It's a request from a server for the master to start tracking it
         and reporting it to clients. Usually the master will verify the server
         before accepting it into the server list.
